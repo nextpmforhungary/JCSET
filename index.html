@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!-- HTML5 dokumentum -->
+<html lang="hu">
+<head>
+<!-- Ékezetes betűk kódolása -->
+<meta charset="utf-8">
+<!-- Mobilbarát méretezés -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A böngészőfül címe -->
+<title>JEWCSET</title>
+<style>
+/* Az oldal háttere és betűtípusa */
+body { font-family: Arial, sans-serif; margin: 0; padding: 15px; min-height: 100vh; box-sizing: border-box;
+  /* Az izraeli zászló háttérként: fehér alap, két kék csík és a Dávid-csillag (beágyazott SVG kép) */
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 160' preserveAspectRatio='xMidYMid slice'%3E%3Crect width='220' height='160' fill='white'/%3E%3Crect y='15' width='220' height='25' fill='%230038b8'/%3E%3Crect y='120' width='220' height='25' fill='%230038b8'/%3E%3Cpath d='M110 50 136 95H84ZM110 110 84 65H136Z' fill='none' stroke='%230038b8' stroke-width='5'/%3E%3C/svg%3E") center / cover no-repeat fixed; }
+/* A chat doboz: lekerekített sarkok, kék keret, a tartalom nem lóg ki */
+.app { max-width: 480px; margin: 0 auto; background: white; border: 3px solid #9bd5e6; border-radius: 25px; overflow: hidden; }
+/* A fejléc: elemek egymás mellett, a gombok jobbra kerülnek */
+header { display: flex; align-items: center; gap: 12px; padding: 10px 15px; border-bottom: 3px solid #9bd5e6; }
+/* A cím kék színű, kitölti a szabad helyet */
+h1 { color: #3f48cc; font-size: 22px; margin: 0; flex: 1; }
+/* A hívás gombok: kerek, zöld */
+.hivas { width: 42px; height: 42px; border: 0; border-radius: 50%; background: #1fa84a; color: white; font-size: 20px; cursor: pointer; }
+/* Az üzenetek területe: fix magasság, görgethető */
+#uzenetek { height: 400px; overflow-y: auto; padding: 10px; background-color: #f4f9fc; background-size: cover; background-position: center; }
+/* A háttérkép gomb: kerek, ugyanolyan mint a küldés gomb */
+#kepgomb { width: 45px; height: 45px; border: 2px solid black; border-radius: 50%; background: white; cursor: pointer; font-size: 18px; }
+/* Egy üzenet sora: pötty és buborék egymás mellett */
+.sor { display: flex; gap: 8px; margin-bottom: 15px; }
+/* A saját üzenetek jobbra kerülnek */
+.en { flex-direction: row-reverse; }
+/* A pötty egy kis kör */
+.pont { width: 25px; height: 25px; border-radius: 50%; background: red; flex-shrink: 0; }
+/* A saját pötty kék */
+.en .pont { background: #3f48cc; }
+/* A buborék: lekerekített, fekete keretes, jól látható sötétpiros szöveggel */
+.buborek { border: 2px solid black; border-radius: 20px; padding: 8px 14px; color: darkred; background: white; word-break: break-word; }
+/* Az alsó sáv: beviteli mező és gomb */
+.also { display: flex; gap: 8px; padding: 10px; }
+/* A beviteli mező ovális */
+#szoveg { flex: 1; border: 2px solid black; border-radius: 25px; padding: 10px 15px; }
+/* A küldés gomb kerek */
+#kuldgomb { width: 45px; height: 45px; border: 2px solid black; border-radius: 50%; background: white; cursor: pointer; font-size: 18px; }
+/* A hívás képernyő: az egész oldalt eltakarja, alapból rejtett */
+#hivasEkran { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
+/* A hívás ablak: lekerekített fehér doboz */
+.hivasDoboz { background: white; border-radius: 30px; padding: 30px 40px; text-align: center; }
+/* A hívás befejezése gomb: kerek, piros */
+#vege { width: 60px; height: 60px; border: 0; border-radius: 50%; background: red; color: white; font-size: 24px; cursor: pointer; }
+</style>
+</head>
+<body>
+<!-- A teljes chat felület -->
+<div class="app">
+  <!-- Fejléc -->
+  <header>
+    <!-- Dávid-csillag (két háromszög) -->
+    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" stroke="#3f48cc" stroke-width="5"><path d="M50 8 90 76H10Z"/><path d="M50 92 10 24h80Z"/></svg>
+    <!-- Az oldal neve -->
+    <h1>JEWCSET</h1>
+    <!-- Hanghívás gomb: kattintáskor elindítja a hívást -->
+    <button class="hivas" onclick="hivasInditas('Hanghívás')">📞</button>
+    <!-- Videóhívás gomb -->
+    <button class="hivas" onclick="hivasInditas('Videóhívás')">🎥</button>
+  </header>
+  <!-- Ide kerülnek az üzenetek JavaScripttel -->
+  <div id="uzenetek"></div>
+  <!-- Alsó sáv -->
+  <div class="also">
+    <!-- Rejtett fájlválasztó: ezen keresztül tölthetünk fel háttérképet -->
+    <input type="file" id="kepvalaszto" accept="image/*" style="display:none">
+    <!-- Háttérkép gomb: megnyitja a fájlválasztót -->
+    <button id="kepgomb" onclick="document.getElementById('kepvalaszto').click()">🖼</button>
+    <!-- Ide írjuk az üzenetet -->
+    <input id="szoveg" placeholder="Írj üzenetet...">
+    <!-- Küldés gomb -->
+    <button id="kuldgomb" onclick="kuldes()">➡</button>
+  </div>
+</div>
+
+<!-- A hívás képernyő (alapból rejtett) -->
+<div id="hivasEkran">
+  <!-- A hívás ablak -->
+  <div class="hivasDoboz">
+    <!-- Itt jelenik meg, hogy milyen hívás indult -->
+    <h2 id="hivasCim"></h2>
+    <!-- Állapot szöveg -->
+    <p>Hívás folyamatban...</p>
+    <!-- Hívás befejezése gomb -->
+    <button id="vege" onclick="hivasVege()">✖</button>
+  </div>
+</div>
+
+<script>
+// Megkérdezzük a felhasználó nevét az oldal megnyitásakor
+var nev = prompt("Mi a neved?") || "Vendég";
+// Az üzenetek területe egy változóban
+var doboz = document.getElementById("uzenetek");
+
+// Ez a függvény egy üzenetet rajzol ki a dobozba (a név és a szöveg alapján)
+var megjelenitettUzenetIdk = Object.create(null);
+
+function ujSor(kuldo, szoveg, id) {
+  if (id !== undefined && megjelenitettUzenetIdk[id]) return;
+  if (id !== undefined) megjelenitettUzenetIdk[id] = true;
+  // Létrehozzuk a sort
+  var sor = document.createElement("div");
+  // Ha mi írtuk, megkapja az "en" osztályt (jobbra kerül)
+  sor.className = kuldo == nev ? "sor en" : "sor";
+  // Létrehozzuk a pöttyöt
+  var pont = document.createElement("div");
+  // Ráadjuk a pötty stílusát
+  pont.className = "pont";
+  // Létrehozzuk a buborékot
+  var buborek = document.createElement("div");
+  // Ráadjuk a buborék stílusát
+  buborek.className = "buborek";
+  // Beírjuk a küldő nevét és az üzenetet
+  buborek.textContent = kuldo + ": " + szoveg;
+  // A pöttyöt betesszük a sorba
+  sor.appendChild(pont);
+  // A buborékot is betesszük a sorba
+  sor.appendChild(buborek);
+  // A sort betesszük a dobozba
+  doboz.appendChild(sor);
+}
+
+// Ez a függvény lekéri az üzeneteket a szervertől
+var utolsoUzenetId = 0;
+var betoltesFolyamatban = false;
+
+function betoltes() {
+  if (betoltesFolyamatban) return;
+  betoltesFolyamatban = true;
+
+  fetch("lekerdez.php?utolso=" + utolsoUzenetId)
+    .then(function (valasz) { return valasz.json(); })
+    .then(function (lista) {
+      for (var i = 0; i < lista.length; i++) {
+        ujSor(lista[i].nev, lista[i].szoveg, lista[i].id);
+        utolsoUzenetId = Number(lista[i].id);
+      }
+      if (lista.length > 0) doboz.scrollTop = doboz.scrollHeight;
+    })
+    .catch(function (hiba) { console.error("Az üzenetek betöltése nem sikerült.", hiba); })
+    .then(function () { betoltesFolyamatban = false; });
+}
+
+// Ez a függvény elküldi az új üzenetet
+function kuldes() {
+  // Kiolvassuk a beírt szöveget
+  var szoveg = document.getElementById("szoveg").value;
+  // Ha üres, nem csinálunk semmit
+  if (szoveg.trim() == "") return;
+  // Összeállítjuk a küldendő adatokat (mint egy űrlap)
+  var adat = new FormData();
+  // Hozzáadjuk a nevet
+  adat.append("nev", nev);
+  // Hozzáadjuk az üzenetet
+  adat.append("szoveg", szoveg);
+  // Elküldjük a kuld.php-nak, majd lekérjük a szerverre mentett üzenetet
+  fetch("kuld.php", { method: "POST", body: adat })
+    .then(function (valasz) {
+      if (!valasz.ok) throw new Error("A szerver nem tudta elmenteni az üzenetet.");
+      return valasz.json();
+    })
+    .then(function (uzenet) {
+      ujSor(uzenet.nev, uzenet.szoveg, uzenet.id);
+      doboz.scrollTop = doboz.scrollHeight;
+      document.getElementById("szoveg").value = "";
+      betoltes();
+    })
+    .catch(function (hiba) {
+      document.getElementById("szoveg").value = szoveg;
+      alert("Az üzenet küldése nem sikerült. Ellenőrizd, hogy a PHP-szerver fut-e.");
+      console.error("Az üzenet küldése nem sikerült.", hiba);
+    });
+}
+
+// Enter lenyomására is elküldjük az üzenetet
+document.getElementById("szoveg").addEventListener("keydown", function (e) {
+  // Ha az Enter volt lenyomva...
+  if (e.key == "Enter") kuldes();
+});
+
+// Hívás indítása: kiírjuk a hívás típusát és megjelenítjük az ablakot
+function hivasInditas(tipus) {
+  // Beírjuk a hívás típusát a címbe
+  document.getElementById("hivasCim").textContent = tipus;
+  // Megjelenítjük a hívás képernyőt
+  document.getElementById("hivasEkran").style.display = "flex";
+}
+
+// Hívás vége: elrejtjük a hívás képernyőt
+function hivasVege() {
+  // Eltüntetjük az ablakot
+  document.getElementById("hivasEkran").style.display = "none";
+}
+
+// Ez a függvény beállítja a chat háttérképét
+function hatterBeallit(forras) {
+  // A megadott kép lesz az üzenetek területének háttere
+  doboz.style.backgroundImage = "url('" + forras + "')";
+}
+
+// Ha korábban választottunk háttérképet, betöltjük a böngésző tárhelyéből
+var mentettKep = localStorage.getItem("chatHatter");
+// Ha van mentett kép, beállítjuk
+if (mentettKep) hatterBeallit(mentettKep);
+
+// Amikor a felhasználó kiválaszt egy képet...
+document.getElementById("kepvalaszto").addEventListener("change", function () {
+  // Kivesszük a kiválasztott fájlt
+  var fajl = this.files[0];
+  // Ha nincs fájl, kilépünk
+  if (!fajl) return;
+  // Létrehozunk egy fájlolvasót
+  var olvaso = new FileReader();
+  // Amikor beolvasta a képet...
+  olvaso.onload = function () {
+    // Beállítjuk háttérnek
+    hatterBeallit(olvaso.result);
+    // Elmentjük, hogy újratöltés után is megmaradjon
+    localStorage.setItem("chatHatter", olvaso.result);
+  };
+  // Elindítjuk a beolvasást
+  olvaso.readAsDataURL(fajl);
+});
+
+// Az oldal megnyitásakor azonnal betöltjük az üzeneteket
+betoltes();
+// Utána 2 másodpercenként frissítjük őket
+setInterval(betoltes, 2000);
+</script>
+</body>
+</html>
